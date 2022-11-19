@@ -1,0 +1,69 @@
+---
+- hosts: Remote_server
+  become: true
+  pre_tasks:
+
+  - name: Dkpg Configure of Ubuntu server
+    shell: 
+      dpkg --configure -a
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Update the Ubuntu Server
+    apt: 
+      update_cache: yes
+      upgrade: yes
+    when: ansible_distribution == "Ubuntu"
+
+  - name: Installing Docker
+    shell: 
+      sudo apt-get install docker -y
+
+  - name: Intalling Docker SDK
+    shell: 
+      pip install docker-py
+
+  - name: Enable Docker Service
+    service:
+      name: docker
+      state: started
+      enabled: true
+
+  - name: Adding docker group to current user
+    shell: 
+      usermod -aG docker grant
+
+  - name: Restart Docker Service
+    service:
+      name: docker
+      state: restarted
+      enabled: true
+
+  - name: Create Build Directory
+    file:
+      path: ./root/demo-dockerfile
+      state: directory
+      owner: root
+      group: root
+      mode: '0755'
+
+  - name: Import Dockerfile
+    copy: 
+      src: ./Dockerfile
+      dest: ./root/demo-dockerfile/Dockerfile
+      owner: root
+      group: root
+      mode: '0755'
+
+
+  - name: Building Dockerfile
+    docker_image:
+      name: act11
+      build:
+        path: ./root/demo-dockerfile
+        args:
+          listen_port: 8080
+      state: present
+
+  - name: Access Containerized App
+    shell: 
+      docker run -it -d -p 8080:80 act11
